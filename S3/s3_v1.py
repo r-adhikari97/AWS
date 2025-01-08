@@ -8,18 +8,16 @@ class SimpleStorageService:
     """
     def __init__(self, region='ap-south-1'):
         self.region = region
-        self.s3_client = None
+        self.s3_client =  boto3.client('s3', region_name=region)
 
     ## Function 1 : Creating S3 bucket using Function
-    def create_bucket(self, bucket_name=None):
+    def create_bucket(self, bucket_name=None, region=None):
         """
         Function responsible for creating S3 bucket  in a specified region
         :param bucket_name:  Name of the S3 bucket -> default : None
         :param region:  Name of the region -> default : None
         :return: True if bucket is created else false
         """
-        region = self.region
-
         ## PHASE 1 : Creating Bucket
         try:
             if region:
@@ -27,9 +25,8 @@ class SimpleStorageService:
                 location = {'LocationConstraint': region}
                 s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration=location)
             else:
-                s3_client = boto3.client('s3')
+                s3_client = boto3.client('s3', region_name=self.region)
                 s3_client.create_bucket(Bucket=bucket_name)
-            self.s3_client = s3_client
         except Exception as e:
             print(f"ERROR (Create Bucket): {str(e)}")
             return False
@@ -42,18 +39,18 @@ class SimpleStorageService:
         Function Responsible ofr listing all buckets
         :return: List
         """
-        region = self.region
-
         try:
-            s3_client = boto3.client('s3', region_name=region)
-            self.s3_client = s3_client
+            s3_client = self.s3_client
             response = s3_client.list_buckets()
             print("List of S3 buckets . . . ")
             for idx, bucket in enumerate(response['Buckets']):
                 print(f"{idx+1}. {bucket['Name']}")
 
+        except ClientError as e:
+            print(f"Client Error: {str(e)}")
         except Exception as e:
             print(f"ERROR (List Buckets): {str(e)}")
+
 
 
     def upload_object(self, file_name, bucket, object_name=None ):
@@ -76,11 +73,32 @@ class SimpleStorageService:
                 print(f"{file_name} file uploaded to {bucket} buket successfully!")
         except ClientError as e:
             print(f"Client Error: {str(e)}")
+        except Exception as e:
+            print(f"ERROR : (upload File){str(e)}")
             return False
         return True
 
 
+    def download_file(self, bucket, object_name, file_name):
+        """
+        Function responsible for downloading files from a server
+        :param bucket: Bucket to download files from
+        :param object_name: name of the object to be downloaded
+        :param file_name: name of the file to be downloaded
+        :return: boolean
+        """
 
+        if not bucket or not file_name or not object_name:
+            raise ValueError("Bucket, object_name, and file_name must all be provided")
+
+        try:
+            self.s3_client.download_file(bucket, object_name, file_name)
+        except ClientError as e:
+            print(f"Client error: {str(e)}")
+        except Exception as e:
+            print(f"ERROR : (download File){str(e)}")
+            return False
+        return True
 
 
 ### DRIVER CODE  ###
@@ -92,8 +110,11 @@ boto_obj = SimpleStorageService()
 boto_obj.list_buckets()
 
 # Phase 3 : Adding Objects
-booldata = boto_obj.upload_object(file_name=r"D:\ORIM\CLOUD\AWS_BoTo3\files\Anya Polytech &_C.xlsx", bucket="test-bucket-mumbai-s3")
+#booldata = boto_obj.upload_object(file_name=r"D:\ORIM\CLOUD\AWS_BoTo3\files\Anya Polytech &_C.xlsx", bucket="test-bucket-mumbai-s3")
+
+# Phase 4 : Downloading Objects
+booldata = boto_obj.download_file(bucket="test-bucket-mumbai-s3", object_name="Anya Polytech &_C.xlsx", file_name=r"D:\Anya Polytech &_C.xlsx")
 if booldata:
-    print("File uploaded")
+    print("File Dwonloaded")
 else:
-    print("File Not uploaded")
+    print("File Not Dwonloaded")
