@@ -1,0 +1,7 @@
+# Ignore Python virtual environments
+.venv/
+
+# Other typical Python ignore rules
+__pycache__/
+*.py[cod]
+*.pyo
