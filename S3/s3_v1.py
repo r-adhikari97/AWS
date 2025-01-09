@@ -1,5 +1,6 @@
 import boto3
 import os
+import json
 from botocore.exceptions import ClientError
 
 class SimpleStorageService:
@@ -7,7 +8,6 @@ class SimpleStorageService:
     Class responsible for handling  S3 Buckets
     """
     def __init__(self, region='ap-south-1'):
-        self.region = region
         self.s3_client =  boto3.client('s3', region_name=region)
 
     ## Function 1 : Creating S3 bucket using Function
@@ -21,12 +21,10 @@ class SimpleStorageService:
         ## PHASE 1 : Creating Bucket
         try:
             if region:
-                s3_client = boto3.client('s3', region_name=region)
                 location = {'LocationConstraint': region}
-                s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration=location)
+                self.s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration=location)
             else:
-                s3_client = boto3.client('s3', region_name=self.region)
-                s3_client.create_bucket(Bucket=bucket_name)
+                self.s3_client.create_bucket(Bucket=bucket_name)
         except Exception as e:
             print(f"ERROR (Create Bucket): {str(e)}")
             return False
@@ -68,11 +66,12 @@ class SimpleStorageService:
         ## Phase 2 Creatigng Client
         s3_client = self.s3_client
         try:
-            reponse = s3_client.upload_file(file_name, bucket, object_name)
-            if reponse:
+            response = s3_client.upload_file(file_name, bucket, object_name)
+            if response:
                 print(f"{file_name} file uploaded to {bucket} buket successfully!")
         except ClientError as e:
             print(f"Client Error: {str(e)}")
+            return False
         except Exception as e:
             print(f"ERROR : (upload File){str(e)}")
             return False
@@ -95,10 +94,63 @@ class SimpleStorageService:
             self.s3_client.download_file(bucket, object_name, file_name)
         except ClientError as e:
             print(f"Client error: {str(e)}")
+            return False
         except Exception as e:
             print(f"ERROR : (download File){str(e)}")
             return False
         return True
+
+
+
+    def write_file(self, data, bucket, key):
+        """
+        Function Responsible for writing data to S3 file
+        :param file: File with written content
+        :param bucket: bucket to which fiie is uploaded to
+        :param key: Unique key to find the file
+        :return: Bool
+        """
+        if not data or not bucket or not key:
+            raise ValueError("Data, bucket and key is required!")
+
+        data = json.dumps(data).encode('UTF-8')
+
+        try:
+            self.s3_client.put_object(Body=data, Bucket=bucket, Key=key)
+        except ClientError as e:
+            print(f"Client Error: {str(e)}")
+            return False
+        except Exception as e:
+            print(f"ERROR (Write File) : {str(e)}")
+            return False
+        return True
+
+
+    def read_file(self, bucket, key):
+        """
+        Function responsible for reading S3 object
+        :param bucket: Bucket name
+        :param key: Key to ie the S3 object on the
+        :return: Object data
+        """
+
+        if not bucket and not key:
+            raise ValueError("Bucket or Key cannot be empty")
+
+        try:
+            s3_client = self.s3_client
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+            data = response['Body'].read()
+            return data
+        except ClientError:
+            print(f"Client Error occurred")
+            return False
+        except Exception as e:
+            print(f"ERROR (Read File): {str(e)}")
+
+
+
+
 
 
 ### DRIVER CODE  ###
@@ -107,14 +159,21 @@ class SimpleStorageService:
 
 # Phase 2 : List Bucket
 boto_obj = SimpleStorageService()
-boto_obj.list_buckets()
+#boto_obj.list_buckets()
 
 # Phase 3 : Adding Objects
 #booldata = boto_obj.upload_object(file_name=r"D:\ORIM\CLOUD\AWS_BoTo3\files\Anya Polytech &_C.xlsx", bucket="test-bucket-mumbai-s3")
 
 # Phase 4 : Downloading Objects
-booldata = boto_obj.download_file(bucket="test-bucket-mumbai-s3", object_name="Anya Polytech &_C.xlsx", file_name=r"D:\Anya Polytech &_C.xlsx")
-if booldata:
-    print("File Dwonloaded")
+#booldata = boto_obj.download_file(bucket="test-bucket-mumbai-s3", object_name="Anya Polytech &_C.xlsx", file_name=r"D:\Anya Polytech &_C.xlsx")
+
+# Phase 5 : Writing file
+#data = {"name":"Raj Adhikari"}
+#booldata = boto_obj.write_file(data=data, bucket='test-bucket-mumbai-s3', key="my-name")
+"""if booldata:
+    print("File WRitten")
 else:
-    print("File Not Dwonloaded")
+    print("File Not WRitten")"""
+
+response = boto_obj.read_file(bucket='test-bucket-mumbai-s3', key='my-name')
+print(f"DATA: {str(response)}")
